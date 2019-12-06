@@ -57,7 +57,6 @@ _EXTENSIONS_BY_CATEGORIES = {
         'jebbs.plantuml', # problematic! look at marketplace for installations || hope graphiz will work
         'joelday.docthis',
         'juliencroain.markdown-viewer',
-        'juliencroain.private-extension-manager',
         'minhthai.vscode-todo-parser',
         'msjsdiag.debugger-for-chrome',
         'msjsdiag.debugger-for-edge',
@@ -70,6 +69,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         'yzane.markdown-pdf', # needs puppeteer extension for chrome/chromium
         'mhutchie.git-graph',
         'Tyriar.sort-lines',
+        'mkloubert.vscode-kanban',
     },
     'language' : {
         'abusaidm.html-snippets',
@@ -88,11 +88,12 @@ _EXTENSIONS_BY_CATEGORIES = {
         'jomiller.rtags-client',
         'magicstack.magicpython',
         'mitaki28.vscode-clang',
+        'ms-azuretools.vscode-docker',
         'ms-python.python',
+        'ms-vscode.cmake-tools',
         'ms-vscode.cpptools',
         'ms-vscode.csharp',
         'ms-vscode.powershell',
-        'ms-azuretools.vscode-docker',
         'redhat.java',
         'redhat.vscode-yaml',
         'satoren.lualint',
@@ -100,7 +101,6 @@ _EXTENSIONS_BY_CATEGORIES = {
         'tobiah.comment-snippets',
         'tushortz.python-extended-snippets',
         'twxs.cmake',
-        'vector-of-bool.cmake-tools',
         'wcwhitehead.bootstrap-3-snippets',
         'webfreak.debug',
         'xabikos.javascriptsnippets',
@@ -173,11 +173,19 @@ _EXTENSIONS_BY_CATEGORIES = {
         'pstreule.codebucket',
         'denco.confluence-markup',
         'letmaik.git-tree-compare',
-        'mkloubert.vscode-kanban',
         'axosoft.gitkraken-glo',
         'secanis.jenkinsfile-support',
         'marlon407.code-groovy',
         'rogalmic.bash-debug',
+        'juliencroain.private-extension-manager',
+        # 'SimonSiefke.svg-preview', # missing download button
+        'CoenraadS.bracket-pair-colorizer',
+        'Gruntfuggly.todo-tree',
+        'Cardinal90.multi-cursor-case-preserve',
+        'yo-C-ta.insert-multiple-rows',
+        'albymor.increment-selection',
+        'olivier-grech.vscode-irc',
+        'lol2k.mirc',
     }
 }
 
@@ -192,7 +200,7 @@ def _github_release_downloader(user, project, assets):
 
         tag = re.search(r'https://github\.com/[^/]+/[^/]+/releases/tag/(?P<tag>.+)', driver.current_url).groupdict()['tag']
         for asset in assets:
-            driver.get(asset_base_url.format(tag=tag, asset=asset))
+            driver.get(asset_base_url.format(tag=tag, asset=asset.format(tag=tag)))
         driver.get(code_base_url.format(tag=tag, archive='tar.gz'))
 
         return assets + [re.compile(r'.*-{tag}\.tar\.gz$'.format(tag=tag.replace('.', r'\.').replace('v', r'v?')), re.I)]
@@ -219,6 +227,12 @@ _SPECIAL_EXTENSIONS = {
         'run_default' : True,
         'downloader' : _github_release_downloader('OmniSharp', 'omnisharp-roslyn',
                                                   _asset_names('omnisharp-', '.zip', ('linux-x64', 'win-x64', 'win-x86')))
+    },
+    'Gruntfuggly.todo-tree' : {
+        'run_default' : True,
+        'downloader' : _github_release_downloader('BurntSushi', 'ripgrep',
+                                                  ['ripgrep_{tag}_amd64.deb'] +
+                                                  _asset_names('ripgrep-{tag}-x86_64-', '', ('unknown-linux-musl.tar.gz', 'pc-windows-msvc.zip')))
     }
 }
 
@@ -362,6 +376,7 @@ class _Downloader():
         assert self._driver.title.endswith(' - Visual Studio Marketplace')
 
         _get_download_button(self._driver).click()
+        time.sleep(0.5)
 
         self._exts_in_progress.append(extension_name)
 
