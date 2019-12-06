@@ -203,7 +203,8 @@ def _github_release_downloader(user, project, assets):
             driver.get(asset_base_url.format(tag=tag, asset=asset.format(tag=tag)))
         driver.get(code_base_url.format(tag=tag, archive='tar.gz'))
 
-        return assets + [re.compile(r'.*-{tag}\.tar\.gz$'.format(tag=tag.replace('.', r'\.').replace('v', r'v?')), re.I)]
+        return [asset.format(tag=tag) for asset in assets] + \
+               [re.compile(r'.*-{tag}\.tar\.gz$'.format(tag=tag.replace('.', r'\.').replace('v', r'v?')), re.I)]
 
     return _downloader
 
