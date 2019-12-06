@@ -212,11 +212,13 @@ def _null_downloader(driver):
 
 _SPECIAL_EXTENSIONS = {
     'ms-vscode.cpptools' : {
-        'downloader' : _github_release_downloader('Microsoft', 'vscode-cpptools', _asset_names('cpptools-', '.vsix', ('linux', 'win32')))
+        'downloader' : _github_release_downloader('Microsoft', 'vscode-cpptools',
+                                                  _asset_names('cpptools-', '.vsix', ('linux', 'win32')))
     },
     'ms-vscode.csharp' : {
         'run_default' : True,
-        'downloader' : _github_release_downloader('OmniSharp', 'omnisharp-roslyn', _asset_names('omnisharp-', '.zip', ('linux-x64', 'win-x64', 'win-x86')))
+        'downloader' : _github_release_downloader('OmniSharp', 'omnisharp-roslyn',
+                                                  _asset_names('omnisharp-', '.zip', ('linux-x64', 'win-x64', 'win-x86')))
     }
 }
 
@@ -224,7 +226,8 @@ def extension_url(extension_name):
     '''
     Creates the extension's Visual Studio Code Maketplace URL.
 
-    @param extension_name   The extension's name as refered by vscode in the format: '{author}.{name}'.
+    @param extension_name   The extension's name as refered by vscode in the format:
+                            '{author}.{name}'.
 
     @return str
     '''
@@ -300,10 +303,11 @@ def _wait_for_file(filename, download_path):
             return
 
 class _Downloader():
-    '''
-    TODO: document
-    '''
-    def __init__(self, download_path=DOWNLOAD_BASE_PATH, vscode_path=DOWNLOAD_INSTALLER_PATH, extensions_path=DOWNLOAD_EXTENSIONS_PATH, use_categories=True):
+    def __init__(self,
+                 download_path=DOWNLOAD_BASE_PATH,
+                 vscode_path=DOWNLOAD_INSTALLER_PATH,
+                 extensions_path=DOWNLOAD_EXTENSIONS_PATH,
+                 use_categories=True):
         self._download_path = download_path
         self._code_path = vscode_path
         self._ext_path = extensions_path
@@ -327,16 +331,13 @@ class _Downloader():
         self._driver = webdriver.Chrome(chrome_options=options)
 
     def _download_vscode_for_os(self, os_button_name):
-        '''
-        TODO: document
-        '''
         self._driver.get('https://code.visualstudio.com/download')
         self._driver.find_element_by_css_selector('button[data-os={}]'.format(os_button_name)).click()
         time.sleep(1)
 
     def download_vscode(self):
         '''
-        TODO: document
+        Download Visual Studio Code installers for Debian and Windows.
         '''
         self._download_vscode_for_os('linux64_deb')
         self._installers_in_progress.append(re.compile(r'.*\.deb$', re.I))
@@ -366,20 +367,25 @@ class _Downloader():
 
     def download_extension(self, extension_name):
         '''
-        TODO: document
+        Download Visual Studio Code extension.
+
+        @param extension_name   The extension to download.
         '''
         if extension_name in _SPECIAL_EXTENSIONS:
             ext_data = _SPECIAL_EXTENSIONS[extension_name]
             if ext_data.get('run_default', False):
                 self._default_download_extension(extension_name)
 
-            self._special_exts_in_progress[extension_name] = ext_data.get('downloader', _null_downloader)(self._driver)
+            self._special_exts_in_progress[extension_name] = \
+                ext_data.get('downloader', _null_downloader)(self._driver)
         else:
             self._default_download_extension(extension_name)
 
     def download_extensions(self, extensions):
         '''
-        TODO: document
+        Download Visual Studio Code extensions.
+
+        @param extensions   An iterable with the extensions to download.
         '''
         for ext in extensions:
             self.download_extension(ext)
@@ -444,22 +450,55 @@ class _Downloader():
     def __del__(self):
         self._dispose()
 
-def download_extension(extension_name):
+def download_vscode(download_path=DOWNLOAD_BASE_PATH,
+                    installer_path=DOWNLOAD_INSTALLER_PATH,
+                    extensions_path=DOWNLOAD_EXTENSIONS_PATH,
+                    use_categories=True):
     '''
-    TODO: document
+    Download Visual Studio Code installers for Debian and Windows.
+    '''
+    print("Downloading: Visual Studio Code")
+
+    with _Downloader(download_path=download_path,
+                     vscode_path=installer_path,
+                     extensions_path=extensions_path,
+                     use_categories=use_categories) as downloader:
+        downloader.download_extension(extension_name)
+
+def download_extension(extension_name,
+                       download_path=DOWNLOAD_BASE_PATH,
+                       installer_path=DOWNLOAD_INSTALLER_PATH,
+                       extensions_path=DOWNLOAD_EXTENSIONS_PATH,
+                       use_categories=True):
+    '''
+    Download Visual Studio Code extension.
+
+    @param extension_name   The extension to download.
     '''
     print("Downloading: ", extension_name)
 
-    with _Downloader() as downloader:
+    with _Downloader(download_path=download_path,
+                     vscode_path=installer_path,
+                     extensions_path=extensions_path,
+                     use_categories=use_categories) as downloader:
         downloader.download_extension(extension_name)
 
-def download_extensions(extensions):
+def download_extensions(extensions,
+                        download_path=DOWNLOAD_BASE_PATH,
+                        installer_path=DOWNLOAD_INSTALLER_PATH,
+                        extensions_path=DOWNLOAD_EXTENSIONS_PATH,
+                        use_categories=True):
     '''
-    TODO: document
+    Download Visual Studio Code extensions.
+
+    @param extensions   An iterable with the extensions to download.
     '''
     print("Downloading: ", ', '.join(extensions))
 
-    with _Downloader() as downloader:
+    with _Downloader(download_path=download_path,
+                     vscode_path=installer_path,
+                     extensions_path=extensions_path,
+                     use_categories=use_categories) as downloader:
         downloader.download_extensions(extensions)
 
 if __name__ == '__main__':
