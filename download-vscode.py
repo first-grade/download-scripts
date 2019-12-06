@@ -280,6 +280,14 @@ def to_dirname(category):
     '''
     return ''.join(word.capitalize() for word in category.split())
 
+def _print(*args, **kwargs):
+    import sys
+    try:
+        return print(*args, **kwargs)
+    finally:
+        sys.stdout.flush()
+        sys.stderr.flush()
+
 def _get_download_button(driver):
     for i in xrange(1000): # 1000 tries
         elements = driver.find_elements_by_css_selector('button[aria-label="Download Extension"]')
@@ -306,12 +314,10 @@ def _get_filename(filename, download_path):
             return existing_file
 
 def _wait_for_file(filename, download_path):
-    import sys
     if isinstance(filename, str):
-        print('Waiting for', repr(filename))
+        _print('Waiting for', repr(filename))
     else:
-        print('Waiting for regex', repr(filename.pattern))
-    sys.stdout.flush()
+        _print('Waiting for regex', repr(filename.pattern))
     while not _check_for_file(filename, download_path):
         time.sleep(1)
         if os.path.exists(os.path.join(download_path, 'stop.txt')):
@@ -378,7 +384,7 @@ class _Downloader():
         real_extension_name, = re.search(r'itemName=([^?&]+)', self._driver.current_url.encode('utf-8')).groups()
 
         if real_extension_name != extension_name:
-            print("\033[1;31mExtension name changed: {!r} -> {!r}".format(extension_name, real_extension_name))
+            _print("\033[1;31mExtension name changed: {!r} -> {!r}\033[0m".format(extension_name, real_extension_name))
 
         _get_download_button(self._driver).click()
         time.sleep(0.5)
@@ -391,7 +397,7 @@ class _Downloader():
 
         @param extension_name   The extension to download.
         '''
-        print("Downloading {}...".format(extension_name))
+        _print("Downloading {}...".format(extension_name))
         if extension_name in _SPECIAL_EXTENSIONS:
             ext_data = _SPECIAL_EXTENSIONS[extension_name]
             if ext_data.get('run_default', False):
@@ -479,7 +485,7 @@ def download_vscode(download_path=DOWNLOAD_BASE_PATH,
     '''
     Download Visual Studio Code installers for Debian and Windows.
     '''
-    print("Downloading: Visual Studio Code")
+    _print("Downloading: Visual Studio Code")
 
     with _Downloader(download_path=download_path,
                      vscode_path=installer_path,
@@ -497,7 +503,7 @@ def download_extension(extension_name,
 
     @param extension_name   The extension to download.
     '''
-    print("Downloading: ", extension_name)
+    _print("Downloading: ", extension_name)
 
     with _Downloader(download_path=download_path,
                      vscode_path=installer_path,
@@ -515,7 +521,7 @@ def download_extensions(extensions,
 
     @param extensions   An iterable with the extensions to download.
     '''
-    print("Downloading: ", ', '.join(extensions))
+    _print("Downloading: ", ', '.join(extensions))
 
     with _Downloader(download_path=download_path,
                      vscode_path=installer_path,
