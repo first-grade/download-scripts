@@ -374,11 +374,15 @@ class _Downloader():
     def _default_download_extension(self, extension_name):
         self._driver.get(extension_url(extension_name))
         assert self._driver.title.endswith(' - Visual Studio Marketplace')
+        real_extension_name, = re.search(r'itemName=([^?&]+)', self._driver.current_url.encode('utf-8')).groups()
+
+        if real_extension_name != extension_name:
+            print("\033[1;31mExtension name changed: {!r} -> {!r}".format(extension_name, real_extension_name))
 
         _get_download_button(self._driver).click()
         time.sleep(0.5)
 
-        self._exts_in_progress.append(extension_name)
+        self._exts_in_progress.append((extension_name, real_extension_name))
 
     def download_extension(self, extension_name):
         '''
@@ -386,6 +390,7 @@ class _Downloader():
 
         @param extension_name   The extension to download.
         '''
+        print("Downloading {}...".format(extension_name))
         if extension_name in _SPECIAL_EXTENSIONS:
             ext_data = _SPECIAL_EXTENSIONS[extension_name]
             if ext_data.get('run_default', False):
@@ -418,17 +423,18 @@ class _Downloader():
         else:
             return self._ext_path
 
-    def _wait_for_extension(self, extension_name):
-        _wait_for_file(self._get_extension_re(extension_name), self._download_path)
+    def _wait_for_extension(self, extension_name, real_name=None):
+        expected_name = real_name if real_name is not None else extension_name
+        _wait_for_file(self._get_extension_re(expected_name), self._download_path)
 
         dst_path = self._get_extension_dirname(extension_name)
-        filename = self._get_extension_filename(extension_name)
+        filename = self._get_extension_filename(expected_name)
 
         self._move_file_to_dest(dst_path, filename)
 
     def _wait_for_all_extensions(self):
-        for ext in self._exts_in_progress:
-            self._wait_for_extension(ext)
+        for ext, name in self._exts_in_progress:
+            self._wait_for_extension(ext, real_name=name)
 
     def _wait_for_extension_extra_file(self, extension_name, filename):
         _wait_for_file(filename, self._download_path)
