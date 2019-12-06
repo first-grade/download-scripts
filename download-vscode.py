@@ -8,6 +8,7 @@ import os
 import re
 import time
 import shutil
+import itertools
 from selenium import webdriver
 
 import common
@@ -53,7 +54,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         'helixquar.asciidecorator',
         'hookyqr.beautify',
         'jakob101.relativepath',
-        'jebbs.plantuml', # problematic! look at marketplace for installations
+        'jebbs.plantuml', # problematic! look at marketplace for installations || hope graphiz will work
         'joelday.docthis',
         'juliencroain.markdown-viewer',
         'juliencroain.private-extension-manager',
@@ -66,7 +67,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         'tushortz.pygame-snippets',
         'tyriar.lorem-ipsum',
         'waderyan.gitblame',
-        'yzane.markdown-pdf', # problematic! needs puppeteer extension for chrome/chromium
+        'yzane.markdown-pdf', # needs puppeteer extension for chrome/chromium
         'mhutchie.git-graph',
         'Tyriar.sort-lines',
     },
@@ -84,15 +85,14 @@ _EXTENSIONS_BY_CATEGORIES = {
         'felixfbecker.php-intellisense',
         'goessner.mdmath',
         'hars.CppSnippets',
-        'hvyindustries.crane',
         'jomiller.rtags-client',
         'magicstack.magicpython',
         'mitaki28.vscode-clang',
         'ms-python.python',
-        'ms-vscode.cpptools', # problematic! - needs intellisense (find from marketplace page)
-        'ms-vscode.csharp', # problematic! needs OmniSharp (find from marketplace page)
+        'ms-vscode.cpptools',
+        'ms-vscode.csharp',
         'ms-vscode.powershell',
-        'peterjausovec.vscode-docker',
+        'ms-azuretools.vscode-docker',
         'redhat.java',
         'redhat.vscode-yaml',
         'satoren.lualint',
@@ -149,7 +149,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         'ms-vscode.theme-materialkit',
         'pkief.material-icon-theme',
         'qinjia.seti-icons',
-        'robertohuertasm.vscode-icons',
+        'vscode-icons-team.vscode-icons',
         'Scatolina.theme-monokaiextended',
         'sdras.night-owl',
         'sldobri.bunker',
@@ -181,29 +181,54 @@ _EXTENSIONS_BY_CATEGORIES = {
     }
 }
 
-_UNIQUE_EXTENSIONS = {
+def _github_release_downloader(user, project, assets):
+    url = 'https://github.com/{user}/{project}/releases/latest'.format(user=user, project=project)
+
+    asset_base_url = 'https://github.com/{user}/{project}/releases/download/{{tag}}/{{asset}}'.format(user=user, project=project)
+    code_base_url = 'https://github.com/{user}/{project}/archive/{{tag}}.{{archive}}'.format(user=user, project=project)
+
+    def _downloader(driver):
+        driver.get(url)
+
+        tag = re.search(r'https://github\.com/[^/]+/[^/]+/releases/tag/(?P<tag>.+)', driver.current_url).groupdict()['tag']
+        for asset in assets:
+            driver.get(asset_base_url.format(tag=tag, asset=asset))
+        driver.get(code_base_url.format(tag=tag, archive='tar.gz'))
+
+        return assets + [re.compile(r'.*-{tag}\.tar\.gz$'.format(tag=tag.replace('.', r'\.').replace('v', r'v?')), re.I)]
+
+    return _downloader
+
+def _asset_names(prefix, suffix, names):
+    return [prefix + name + suffix for name in names]
+
+def _multiple(*downloaders):
+    def _downloader(driver):
+        return itertools.chain(*(downloader(driver) for downloader in downloaders))
+    return _downloader
+
+def _null_downloader(driver):
+    pass
+
+_SPECIAL_EXTENSIONS = {
     'ms-vscode.cpptools' : {
-        'run_default' : False,
+        'downloader' : _github_release_downloader('Microsoft', 'vscode-cpptools', _asset_names('cpptools-', '.vsix', ('linux', 'win32')))
+    },
+    'ms-vscode.csharp' : {
+        'run_default' : True,
+        'downloader' : _github_release_downloader('OmniSharp', 'omnisharp-roslyn', _asset_names('omnisharp-', '.zip', ('linux-x64', 'win-x64', 'win-x86')))
     }
 }
 
 def extension_url(extension_name):
     '''
-    Creates the extension's marketplace URL.
+    Creates the extension's Visual Studio Code Maketplace URL.
 
     @param extension_name   The extension's name as refered by vscode in the format: '{author}.{name}'.
 
     @return str
     '''
     return 'https://marketplace.visualstudio.com/items?itemName={}'.format(extension_name)
-
-def open_maketplace_page(extension_name):
-    '''
-    Opens the Visual Studio Code Maketplace page for the given extension.
-
-    @param extension_name   The extension's name as refered by vscode in the format: '{author}.{name}'.
-    '''
-    os.system('"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" --incognito {}'.format(extension_url(extension_name)))
 
 def all_extensions():
     '''
@@ -216,7 +241,11 @@ def all_extensions():
 
 def get_category(extension_name):
     '''
-    TODO: document
+    Gets the name of category of the given extension.
+
+    @param extension_name   The name of the extension to check.
+
+    @return str
     '''
     for category in _EXTENSIONS_BY_CATEGORIES:
         if extension_name in _EXTENSIONS_BY_CATEGORIES[category]:
@@ -225,47 +254,109 @@ def get_category(extension_name):
 
 def to_dirname(category):
     '''
-    TODO: document
+    Converts a category's name to a directory name (in CamelCase).
+
+    @param category A category's name.
+
+    @return str
     '''
     return ''.join(word.capitalize() for word in category.split())
 
 def _get_download_button(driver):
     for i in xrange(1000): # 1000 tries
-        for element in driver.find_elements_by_tag_name('button'):
-            if element.text == 'Download Extension':
-                return element
+        elements = driver.find_elements_by_css_selector('button[aria-label="Download Extension"]')
+        if elements:
+            return elements[0]
+        time.sleep(1)
+
+def _get_matcher(filename):
+    if isinstance(filename, str):
+        return lambda x: filename == x
+    else:
+        return filename.match
 
 def _check_for_file(filename, download_path):
-    if isinstance(filename, str):
-        match = lambda x: filename == x
-    else:
-        match = filename.match
+    match = _get_matcher(filename)
 
     return any(match(existing_file) for existing_file in os.listdir(download_path))
 
+def _get_filename(filename, download_path):
+    match = _get_matcher(filename)
+
+    for existing_file in os.listdir(download_path):
+        if match(existing_file):
+            return existing_file
+
 def _wait_for_file(filename, download_path):
+    import sys
+    if isinstance(filename, str):
+        print('Waiting for', repr(filename))
+    else:
+        print('Waiting for regex', repr(filename.pattern))
+    sys.stdout.flush()
     while not _check_for_file(filename, download_path):
         time.sleep(1)
+        if os.path.exists(os.path.join(download_path, 'stop.txt')):
+            return
 
 class _Downloader():
     '''
     TODO: document
     '''
-    def __init__(self, download_path=DOWNLOAD_BASE_PATH, extensions_path=DOWNLOAD_EXTENSIONS_PATH, use_categories=True):
+    def __init__(self, download_path=DOWNLOAD_BASE_PATH, vscode_path=DOWNLOAD_INSTALLER_PATH, extensions_path=DOWNLOAD_EXTENSIONS_PATH, use_categories=True):
         self._download_path = download_path
+        self._code_path = vscode_path
         self._ext_path = extensions_path
         self._use_categories = use_categories
+        self._installers_in_progress = []
         self._exts_in_progress = []
+        self._special_exts_in_progress = {}
+
+        common.create_downloads(self._code_path, clean=False)
+        common.create_downloads(self._ext_path, clean=False)
 
         options = webdriver.ChromeOptions()
 
-        preferences = { "download.default_directory" : self._download_path }
-        options.add_experimental_option("prefs", preferences)
+        options.add_experimental_option("prefs", {
+            "download.default_directory": self._download_path,
+            'safebrowsing.enabled': False,
+            'safebrowsing.disable_download_protection': True
+        })
         options.add_argument("--incognito")
 
         self._driver = webdriver.Chrome(chrome_options=options)
 
-    def download_extension(self, extension_name):
+    def _download_vscode_for_os(self, os_button_name):
+        '''
+        TODO: document
+        '''
+        self._driver.get('https://code.visualstudio.com/download')
+        self._driver.find_element_by_css_selector('button[data-os={}]'.format(os_button_name)).click()
+        time.sleep(1)
+
+    def download_vscode(self):
+        '''
+        TODO: document
+        '''
+        self._download_vscode_for_os('linux64_deb')
+        self._installers_in_progress.append(re.compile(r'.*\.deb$', re.I))
+        self._download_vscode_for_os('win')
+        self._installers_in_progress.append(re.compile(r'.*\.exe$', re.I))
+
+    def _move_file_to_dest(self, dst_path, filename):
+        common.create_downloads(dst_path, clean=False)
+
+        src = os.path.join(self._download_path, filename)
+        dst = os.path.join(dst_path, filename)
+        shutil.move(src, dst)
+
+    def _wait_for_installers(self):
+        for installer in self._installers_in_progress:
+            _wait_for_file(installer, self._download_path)
+
+            self._move_file_to_dest(self._code_path, _get_filename(installer, self._download_path))
+
+    def _default_download_extension(self, extension_name):
         self._driver.get(extension_url(extension_name))
         assert self._driver.title.endswith(' - Visual Studio Marketplace')
 
@@ -273,41 +364,68 @@ class _Downloader():
 
         self._exts_in_progress.append(extension_name)
 
+    def download_extension(self, extension_name):
+        '''
+        TODO: document
+        '''
+        if extension_name in _SPECIAL_EXTENSIONS:
+            ext_data = _SPECIAL_EXTENSIONS[extension_name]
+            if ext_data.get('run_default', False):
+                self._default_download_extension(extension_name)
+
+            self._special_exts_in_progress[extension_name] = ext_data.get('downloader', _null_downloader)(self._driver)
+        else:
+            self._default_download_extension(extension_name)
+
     def download_extensions(self, extensions):
+        '''
+        TODO: document
+        '''
         for ext in extensions:
             self.download_extension(ext)
 
     @staticmethod
     def _get_extension_re(extension_name):
-        return re.compile(_EXTENSION_FILE_BASE_RE.format(name=extension_name))
+        return re.compile(_EXTENSION_FILE_BASE_RE.format(name=extension_name), re.I)
 
     def _get_extension_filename(self, extension_name):
-        extension_file_re = self._get_extension_re(extension_name)
-        for ext_file in os.listdir(self._download_path):
-            if extension_file_re.match(ext_file):
-                return ext_file
+        return _get_filename(self._get_extension_re(extension_name), self._download_path)
+
+    def _get_extension_dirname(self, extension_name):
+        if self._use_categories:
+            return os.path.join(self._ext_path, to_dirname(get_category(extension_name)))
+        else:
+            return self._ext_path
 
     def _wait_for_extension(self, extension_name):
         _wait_for_file(self._get_extension_re(extension_name), self._download_path)
 
-        if self._use_categories:
-            dst_path = os.path.join(self._ext_path, to_dirname(get_category(extension_name)))
-        else:
-            dst_path = self._ext_path
-
-        common.create_downloads(dst_path, clean=False)
-
+        dst_path = self._get_extension_dirname(extension_name)
         filename = self._get_extension_filename(extension_name)
-        src = os.path.join(self._download_path, filename)
-        dst = os.path.join(dst_path, filename)
-        shutil.move(src, dst)
+
+        self._move_file_to_dest(dst_path, filename)
 
     def _wait_for_all_extensions(self):
         for ext in self._exts_in_progress:
             self._wait_for_extension(ext)
 
+    def _wait_for_extension_extra_file(self, extension_name, filename):
+        _wait_for_file(filename, self._download_path)
+
+        dst_path = os.path.join(self._get_extension_dirname(extension_name), extension_name)
+        filename = _get_filename(filename, self._download_path)
+
+        self._move_file_to_dest(dst_path, filename)
+
+    def _wait_for_all_extensions_extra_files(self):
+        for ext in self._special_exts_in_progress:
+            for filename in self._special_exts_in_progress[ext]:
+                self._wait_for_extension_extra_file(ext, filename)
+
     def _wait_for_downloads(self):
         self._wait_for_all_extensions()
+        self._wait_for_all_extensions_extra_files()
+        self._wait_for_installers()
 
     def _dispose(self):
         if self._driver is None:
@@ -346,7 +464,7 @@ def download_extensions(extensions):
 
 if __name__ == '__main__':
     common.create_downloads(DOWNLOAD_BASE_PATH)
-    common.create_downloads(DOWNLOAD_INSTALLER_PATH)
-    common.create_downloads(DOWNLOAD_EXTENSIONS_PATH)
 
-    download_extensions(all_extensions())
+    with _Downloader() as downloader:
+        downloader.download_extensions(all_extensions())
+        downloader.download_vscode()
