@@ -3,8 +3,6 @@
 
 Downloads the VSCode installation and extensions (as .vsix) for offline usage.
 '''
-from __future__ import print_function
-
 import os
 import re
 import time
@@ -26,6 +24,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         '2gua.rainbow-brackets',
         'alexdima.copy-relative-path',
         'bbenoist.togglehs',
+        'cardinal90.multi-cursor-case-preserve',
         'formulahendry.auto-close-tag',
         'formulahendry.auto-rename-tag',
         'ionutvmi.path-autocomplete',
@@ -51,6 +50,7 @@ _EXTENSIONS_BY_CATEGORIES = {
         'firefox-devtools.vscode-firefox-debug',
         'formulahendry.code-runner',
         'formulahendry.terminal',
+        'gruntfuggly.todo-tree',
         'hackerfinn.vscode-todo-renewed',
         'helixquar.asciidecorator',
         'hookyqr.beautify',
@@ -68,18 +68,19 @@ _EXTENSIONS_BY_CATEGORIES = {
         'tomoki1207.pdf',
         'tushortz.pygame-snippets',
         'tyriar.lorem-ipsum',
-        'Tyriar.sort-lines',
+        'tyriar.sort-lines',
         'waderyan.gitblame',
+        'yo-c-ta.insert-multiple-rows',
         'yzane.markdown-pdf', # needs puppeteer extension for chrome/chromium
     },
     'language' : {
         'abusaidm.html-snippets',
+        'actboy168.lua-debug',
         'ajshort.include-autocomplete',
         'christian-kohler.npm-intellisense', # problematic? probably needs npm?
         'davidanson.vscode-markdownlint',
         'dbaeumer.vscode-eslint', # problematic? needs `npm install -g eslint`
         'dbankier.vscode-instant-markdown',
-        'devcat.lua-debug',
         'dotjoshjohnson.xml',
         'ecmel.vscode-html-css',
         'eg2.vscode-npm-script',
@@ -87,18 +88,21 @@ _EXTENSIONS_BY_CATEGORIES = {
         'goessner.mdmath',
         'hars.CppSnippets',
         'jomiller.rtags-client',
+        'keyring.lua',
+        'lextudio.restructuredtext',
         'magicstack.magicpython',
         'mitaki28.vscode-clang',
         'ms-azuretools.vscode-docker',
+        'ms-dotnettools.csharp',
         'ms-python.python',
         'ms-vscode.cmake-tools',
         'ms-vscode.cpptools',
-        'ms-vscode.csharp',
         'ms-vscode.powershell',
         'redhat.java',
         'redhat.vscode-yaml',
         'satoren.lualint',
         'sidthesloth.html5-boilerplate',
+        'sumneko.lua',
         'tobiah.comment-snippets',
         'tushortz.python-extended-snippets',
         'twxs.cmake',
@@ -164,29 +168,25 @@ _EXTENSIONS_BY_CATEGORIES = {
         'zhuangtongfa.material-theme',
     },
     'miscellaneous' : {
-        'hoovercj.vscode-power-mode'
+        'hoovercj.vscode-power-mode',
+        'simonsiefke.svg-preview',
     },
     'experimental utils' : {
         'albymor.increment-selection',
         'Atlassian.atlascode',
         'axosoft.gitkraken-glo',
         'bb-spectacle.bb-spectacle',
-        'Cardinal90.multi-cursor-case-preserve',
         'CoenraadS.bracket-pair-colorizer',
         'denco.confluence-markup',
         'gioboa.jira-plugin',
-        'Gruntfuggly.todo-tree',
+        'jackguy.cheetah',
         'juliencroain.private-extension-manager',
         'letmaik.git-tree-compare',
-        'lol2k.mirc',
         'marlon407.code-groovy',
-        'olivier-grech.vscode-irc',
         'pstreule.codebucket',
         'RamiroBerrelleza.bitbucket-pull-requests',
         'rogalmic.bash-debug',
         'secanis.jenkinsfile-support',
-        'SimonSiefke.svg-preview',
-        'yo-C-ta.insert-multiple-rows',
     }
 }
 
