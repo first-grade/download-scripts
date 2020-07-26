@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.8
 '''Downloader for Visual Studio Code for offline usage
 
 Downloads the VSCode installation and extensions (as .vsix) for offline usage.
@@ -289,7 +290,7 @@ def _print(*args, **kwargs):
         sys.stderr.flush()
 
 def _get_download_button(driver):
-    for i in xrange(1000): # 1000 tries
+    for i in range(1000): # 1000 tries
         elements = driver.find_elements_by_css_selector('button[aria-label="Download Extension"]')
         if elements:
             return elements[0]
@@ -349,7 +350,7 @@ class _Downloader():
         })
         options.add_argument("--incognito")
 
-        self._driver = webdriver.Chrome(chrome_options=options)
+        self._driver = webdriver.Chrome(options=options)
 
     def _download_vscode_for_os(self, os_button_name):
         self._driver.get('https://code.visualstudio.com/download')
@@ -381,7 +382,7 @@ class _Downloader():
     def _default_download_extension(self, extension_name):
         self._driver.get(extension_url(extension_name))
         assert self._driver.title.endswith(' - Visual Studio Marketplace')
-        real_extension_name, = re.search(r'itemName=([^?&]+)', self._driver.current_url.encode('utf-8')).groups()
+        real_extension_name, = re.search(r'itemName=([^?&]+)', self._driver.current_url).groups()
 
         if real_extension_name != extension_name:
             _print("\033[1;31mExtension name changed: {!r} -> {!r}\033[0m".format(extension_name, real_extension_name))
